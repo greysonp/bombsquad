@@ -15,15 +15,16 @@ this.game = this.game || {};
   var _pixel = null;
   var _colorOn = '#ffffff';
   var _colorOff = '#000000';
-  var _timerId = 0;
+  var _blinkRate = 0;
   var _pixelState = false;
   var _player = {
-    x: STAGE_WIDTH / 2,
-    y: STAGE_HEIGHT / 2
+    x: Math.round(STAGE_WIDTH / 2),
+    y: Math.round(STAGE_HEIGHT / 2)
   }
 
-
-
+  var _lastToggleTime = 0;
+  var _nextToggleTime = 0;
+  var _onTarget = false;
 
   var _targets = [];
 
@@ -40,7 +41,10 @@ this.game = this.game || {};
       y: Math.round(Math.random() * STAGE_HEIGHT)
     });
 
+    setInterval(update, 1);
+
     // Kick it off
+    _lastToggleTime = _nextToggleTime = Date.now();
     updateBlinkRate();
   }
 
@@ -69,20 +73,31 @@ this.game = this.game || {};
     console.log(_player);
   }
 
+  function update() {
+    var time = Date.now();
+    if (time > _nextToggleTime) {
+      _lastToggleTime = _nextToggleTime;
+      _nextToggleTime = _nextToggleTime + _blinkRate;
+      if (!_onTarget) {
+        setPixelState(!_pixelState);
+      } else {
+        setPixelState(true);
+      }
+    }
+  }
+
   function updateBlinkRate() {
     var target = findNearestTarget();
     if (target != null) {
       var dist = getDistance(target, _player);
       var percentClose = dist / MAX_DISTANCE;
-      var blinkRate = BLINK_SLOWEST * percentClose;
+      _blinkRate = BLINK_SLOWEST * percentClose;
 
-      clearInterval(_timerId);
-      if (blinkRate > 0) {
-        _timerId = setInterval(function() {
-          setPixelState(!_pixelState);
-        }, blinkRate);
+      if (dist > 0) {
+        _nextToggleTime = _lastToggleTime + _blinkRate;
+        _onTarget = false;
       } else {
-        setPixelState(true);
+        _onTarget = true;
       }
     }
   }
