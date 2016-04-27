@@ -6,9 +6,11 @@ this.game = this.game || {};
   var KEY_DOWN = 40;
   var KEY_LEFT = 37;
   var KEY_RIGHT = 39;
+  var KEY_SPACE = 32;
 
-  var STAGE_WIDTH = 25;
-  var STAGE_HEIGHT = 25;
+  var STAGE_WIDTH = 10;
+  var STAGE_HEIGHT = 10;
+  var BLINK_FASTEST = 50;
   var BLINK_SLOWEST = 1000;
   var MAX_DISTANCE = Math.sqrt(STAGE_WIDTH * STAGE_WIDTH + STAGE_HEIGHT * STAGE_HEIGHT);
 
@@ -17,30 +19,33 @@ this.game = this.game || {};
   var _colorOff = '#000000';
   var _blinkRate = 0;
   var _pixelState = false;
+  var _lastToggleTime = 0;
+  var _nextToggleTime = 0;
+  var _onTarget = false;
+  var _sound = null;
+  var _targets = [];
   var _player = {
     x: Math.round(STAGE_WIDTH / 2),
     y: Math.round(STAGE_HEIGHT / 2)
   }
 
-  var _lastToggleTime = 0;
-  var _nextToggleTime = 0;
-  var _onTarget = false;
-
-  var _targets = [];
 
   function init() {
     // Find element
     _pixel = document.getElementById('pixel');
 
+    // Load beep
+    _sound = new Howl({
+      urls: ['beep.wav']
+    });
+
     // Add event listener
     document.addEventListener('keyup', onKeyUp);
 
     // Add a target to the list
-    _targets.push({
-      x: Math.round(Math.random() * STAGE_WIDTH),
-      y: Math.round(Math.random() * STAGE_HEIGHT)
-    });
+    spawnTarget();
 
+    // Initialize update loop
     setInterval(update, 1);
 
     // Kick it off
@@ -53,22 +58,28 @@ this.game = this.game || {};
       case KEY_UP:
         _player.y = Math.max(_player.y - 1, 0);
         updateBlinkRate();
-      break;
+        break;
 
       case KEY_DOWN:
         _player.y = Math.min(_player.y + 1, STAGE_HEIGHT);
         updateBlinkRate();
-      break;
+        break;
 
       case KEY_LEFT:
         _player.x = Math.max(_player.x - 1, 0);
         updateBlinkRate();
-      break;
+        break;
 
       case KEY_RIGHT:
         _player.x = Math.min(_player.x + 1, STAGE_WIDTH);
         updateBlinkRate();
-      break;
+        break;
+
+      case KEY_SPACE:
+        if (_onTarget) {
+          disarm();
+        }
+        break;
     }
     console.log(_player);
   }
@@ -91,7 +102,7 @@ this.game = this.game || {};
     if (target != null) {
       var dist = getDistance(target, _player);
       var percentClose = dist / MAX_DISTANCE;
-      _blinkRate = BLINK_SLOWEST * percentClose;
+      _blinkRate = BLINK_FASTEST + (BLINK_SLOWEST - BLINK_FASTEST) * percentClose;
 
       if (dist > 0) {
         _nextToggleTime = _lastToggleTime + _blinkRate;
@@ -106,9 +117,29 @@ this.game = this.game || {};
     _pixelState = state;
     if (state) {
       _pixel.style.backgroundColor = _colorOn;
+      _sound.play();
     } else {
       _pixel.style.backgroundColor = _colorOff;
     }
+  }
+
+  function spawnTarget() {
+    _targets.push({
+      x: Math.round(Math.random() * STAGE_WIDTH),
+      y: Math.round(Math.random() * STAGE_HEIGHT)
+    });
+  }
+
+  function disarm() {
+    var target = findNearestTarget();
+    for (var i = 0; i < _targets.length; i++) {
+      if (_targets[i] == target) {
+        _targets.splice(i, 1);
+        break;
+      }
+    }
+    spawnTarget();
+    updateBlinkRate();
   }
 
   function findNearestTarget() {
