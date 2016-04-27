@@ -40,7 +40,8 @@ this.game = this.game || {};
     });
 
     // Add event listener
-    document.addEventListener('keyup', onKeyUp);
+    window.addEventListener('keyup', onKeyUp, false);
+    window.addEventListener('keydown', onKeyDown, false);
 
     // Add a target to the list
     spawnTarget();
@@ -81,7 +82,11 @@ this.game = this.game || {};
         }
         break;
     }
-    console.log(_player);
+    e.preventDefault();
+  }
+
+  function onKeyDown(e) {
+    e.preventDefault();
   }
 
   function update() {
